@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Optometry Clinical RPG</title>
+
+<style>
+/* 核心樣式設定 */
+* {box-sizing:border-box; margin:0; padding:0;}
+html, body {
+  width:100%; height:100%; background:#111;
+  display:flex; align-items:center; justify-content:center;
+  font-family:'Courier New', monospace, sans-serif;
+  overflow: hidden;
+}
+#outer {
+  width:800px; max-width:100vw;
+  border:6px solid #111; outline:3px solid #555;
+  box-shadow:0 0 0 2px #000,0 8px 40px #000;
+  position:relative; background:#000;
+  image-rendering:pixelated;
+}
+
+/* 開始畫面[cite: 1] */
+#start-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  background-image: url('startingtitle.png');
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  cursor: pointer;
+}
+#start-hint {
+  color: #fff;
+  background: rgba(0,0,0,0.7);
+  padding: 12px 24px;
+  margin-bottom: 60px;
+  font-size: 22px;
+  border: 3px solid #f5c542;
+  font-weight: bold;
+  text-shadow: 2px 2px #000;
+  animation: blink 1s step-end infinite;
+}
+
+#scene-wrap {
+  width:100%; height:340px;
+  position:relative; overflow:hidden;
+  background-color: #0a0a0a;
+  background-size: cover;
+  background-position: center;
+  transition: background-image 0.3s ease;
+}
+#hud {
+  position:absolute; top:0; left:0; right:0;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:6px 10px;
+  background:linear-gradient(180deg,rgba(0,0,0,0.8) 0%,rgba(0,0,0,0) 100%);
+  pointer-events:none; z-index:10;
+}
+.hud-block {display:flex; align-items:center; gap:6px;}
+.hud-label {font-family:'Courier New',monospace; font-size:12px; color:#f5c542; text-shadow:1px 1px #000;}
+.hud-val {font-family:'Courier New',monospace; font-size:14px; color:#fff; text-shadow:1px 1px #000;}
+.bar-outer {width:85px; height:12px; background:#111; border:1.5px solid #555;}
+.bar-inner {height:100%; transition: width 0.45s ease, background-color 0.3s ease;}
+#bottom-ui { display:flex; background:#000; border-top:4px solid #333; }
+#dialogue-box {
+  flex:1; background:#0a0a0a; border:4px solid #555; border-right:2px solid #333;
+  margin:6px 0 6px 6px; padding:18px 14px 10px 14px;
+  min-height:170px; position:relative;
+}
+#speaker-tag {
+  position:absolute; top:-14px; left:10px;
+  background:#0a0a0a; border:2px solid #555;
+  font-size:14px; color:#f5c542; padding:2px 10px;
+}
+#dialogue-text { font-size:15px; color:#fff; line-height:1.5; white-space:pre-wrap; min-height:72px; }
+#arrow-blink {
+  position:absolute; bottom:8px; right:12px;
+  font-size:14px; color:#f5c542;
+  animation:blink .7s step-end infinite;
+}
+@keyframes blink {0%,100%{opacity:1} 50%{opacity:0}}
+#menu-box {
+  width:320px; min-width:320px;
+  background:#0a0a0a; border:4px solid #555;
+  margin:6px 6px 6px 0; padding:8px 0;
+  display:flex; flex-direction:column; justify-content:center;
+}
+.menu-item {
+  font-size:14px; color:#fff; padding:8px 12px; cursor:pointer;
+  display:flex; align-items:flex-start; gap:6px;
+  transition:background .1s; line-height:1.3;
+}
+.menu-item::before {content:'▶'; font-size:12px; color:#f5c542; flex-shrink:0; margin-top:2px; opacity: 0;}
+.menu-item:hover {background:#222;}
+.menu-item:hover::before {opacity: 1;}
+#stage-title {
+  text-align:center; padding:5px; background:#111;
+  font-size:14px; color:#aaa; border-top:2px solid #222; font-weight: bold;
+}
+#gameover-ov, #win-ov {
+  position:absolute; inset:0; display:none; flex-direction:column; 
+  align-items:center; justify-content:center; gap:10px; z-index:50; 
+  background:rgba(0,0,0,.95);
+  padding: 20px;
+}
+.ov-title {font-size:26px; font-weight:bold; text-align:center; white-space: pre-wrap;}
+.ov-sub {font-size:16px; color:#ccc; line-height:1.6; text-align:center;}
+.ov-btn {
+  background:transparent; border:3px solid #f5c542; color:#f5c542;
+  font-size:16px; padding:10px 22px; cursor:pointer; margin-top:10px; font-weight: bold;
+}
+.ov-btn:hover {background:#f5c542; color:#000;}
+
+#inv-strip {
+  background:#050505; border-top:2px solid #222;
+  padding:8px 10px; display:flex; align-items:center; gap:6px; min-height:36px; flex-wrap:wrap;
+}
+.inv-label {font-size:12px; color:#888;}
+.inv-chip {
+  background:#0a1a0a; border:1px solid #3a7a3a;
+  color:#5db85d; font-size:13px; padding:3px 8px; border-radius: 4px;
+}
+
+#master-img {
+  width: 380px; 
+  max-height: 260px;
+  object-fit: contain;
+  border: 4px solid #f5c542;
+  border-radius: 12px;
+  box-shadow: 0 0 25px rgba(245, 197, 66, 0.4);
+  margin-bottom: 10px;
+  display: none;
+}
+
+.copyright-footer {
+  text-align: center;
+  font-size: 11px;
+  color: #444;
+  padding: 5px;
+  background: #000;
+  border-top: 1px solid #222;
+}
+
+@keyframes flashR {0%,100%{filter:none;} 40%{filter:brightness(0.5) sepia(1) hue-rotate(-30deg) saturate(5);}}
+@keyframes flashG {0%,100%{filter:none;} 40%{filter:brightness(1.2) sepia(0.5) hue-rotate(80deg) saturate(3);}}
+.flash-red {animation:flashR 0.5s ease;}
+.flash-green {animation:flashG 0.5s ease;}
+</style>
+</head>
+<body>
+
+<audio id="bgm" src="bgm.mp3" loop></audio>
+
+<div id="outer">
+  <!-- 開始畫面[cite: 1] -->
+  <div id="start-screen" onclick="startGame()">
+    <div id="start-hint">CLICK TO START ADVENTURE</div>
+  </div>
+
+  <div id="hud">
+    <div style="display:flex;gap:16px;align-items:center">
+      <div class="hud-block">
+        <span class="hud-label">Confidence</span>
+        <div class="bar-outer"><div class="bar-inner" id="conf-bar" style="width:50%;background:#44bb44"></div></div>
+        <span class="hud-val" id="conf-val">50</span>
+      </div>
+      <div class="hud-block">
+        <span class="hud-label">EXP</span>
+        <div class="bar-outer"><div class="bar-inner" id="exp-bar" style="width:0%;background:#2288ff"></div></div>
+        <span class="hud-val" id="exp-val">0</span>
+      </div>
+      <div class="hud-block">
+        <span class="hud-label">LV</span>
+        <span class="hud-val" id="lv-val" style="color:#f5c542">1</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="scene-wrap"></div>
+  <div id="stage-title">Loading...</div>
+
+  <div id="bottom-ui">
+    <div id="dialogue-box">
+      <div id="speaker-tag">System</div>
+      <div id="dialogue-text"></div>
+      <div id="arrow-blink">▼</div>
+    </div>
+    <div id="menu-box"></div>
+  </div>
+
+  <div id="inv-strip">
+    <span class="inv-label">🎒 Inventory: </span>
+    <div id="inv-items" style="display:flex; gap:6px; flex-wrap:wrap;"></div>
+  </div>
+
+  <div class="copyright-footer">© 2026 Kuan-Wei Lee</div>
+
+  <div id="gameover-ov">
+    <div class="ov-title" style="color:#e04040">GAME OVER</div>
+    <div class="ov-sub">The patient has lost all trust in your clinical ability.</div>
+    <button class="ov-btn" onclick="restart()">🔄 Retake License Exam</button>
+  </div>
+
+  <div id="win-ov">
+    <img id="master-img" src="Master.png" alt="Master Achievement">
+    <div id="win-title-main" class="ov-title" style="color:#f5c542">Clinical Assessment Complete!</div>
+    <div class="ov-sub" id="win-stats"></div>
+    <button class="ov-btn" onclick="restart()">🎉 Play Again</button>
+    <div style="margin-top:20px; font-size:12px; color:#555;">© 2026 Kuan-Wei Lee</div>
+  </div>
+</div>
+
+<script>
+const bgm = document.getElementById('bgm');
+
+function startGame() {
+    bgm.play().catch(e => console.log("Audio play failed."));
+    document.getElementById('start-screen').style.display = 'none';
+    initGame();
+}
+
+// 原始敘述完整還原[cite: 1]
+const storyNodes = {
+    "Node_1": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "Mother of 5yo",
+        text: "An anxious mother brings in her crying 5-year-old child, suspecting high astigmatism. The child is extremely uncooperative and cannot answer questions.\n\nWhat instrument should you use first to measure refractive error?",
+        img: "Stage1.png",
+        options: [
+            { text: "(A) Phoropter", next: "Node_2" },
+            { text: "(B) Autorefractor", next: "Node_3" },
+            { text: "(C) Snellen Visual Acuity Chart", next: "Node_1C" }
+        ]
+    },
+    "Node_2": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "System Warning",
+        text: "❌ Examination Blocked: Unable to cooperate with subjective refraction.\n\nThe Phoropter requires subjective answers. Trust decreased!",
+        img: "Stage1.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_1" }],
+        hpChange: -20
+    },
+    "Node_1C": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "System Warning",
+        text: "❌ Ineffective Method. The child is crying and uncooperative. Trust decreased!",
+        img: "Stage1.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_1" }],
+        hpChange: -15
+    },
+    "Node_3": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "Clinical Thinking",
+        text: "⚠️ Preliminary objective data obtained. To obtain the *most accurate* pediatric refraction data, which instrument should you switch to?",
+        img: "Stage1.png",
+        options: [
+            { text: "(A) Retinoscope", next: "Node_4" },
+            { text: "(B) Prescribe directly using Autorefractor", next: "Node_5" },
+            { text: "(C) Trial Frame with Subjective Refraction", next: "Node_3C" }
+        ],
+        expChange: 10, hpChange: 10
+    },
+    "Node_4": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "Advising Professor",
+        text: "✅ Stage 1 Cleared! The Retinoscope accurately measures children and detects latent hyperopia. Equipment unlocked!",
+        img: "Stage1.png",
+        options: [{ text: "➡️ Enter Stage 2", next: "Node_6" }],
+        expChange: 50, item: "Retinoscope", hpChange: 10
+    },
+    "Node_5": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "System Warning",
+        text: "❌ Incorrect Management: Accommodation Interference. Trust plummeted!",
+        img: "Stage1.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_3" }],
+        hpChange: -20
+    },
+    "Node_3C": {
+        stage: "Stage 1: Pediatric Vision Crisis",
+        speaker: "System Warning",
+        text: "❌ Method Too Slow. The child loses patience and throws a tantrum. Trust decreased!",
+        img: "Stage1.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_3" }],
+        hpChange: -15
+    },
+    "Node_6": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "20yo College Student",
+        text: "I want to wear contact lenses, but my eyes often feel dry and red...\n\n(Facing this chief complaint, what should you examine first?)",
+        img: "Stage2.png",
+        options: [
+            { text: "(A) Use Slit Lamp (Observe tear film/cornea)", next: "Node_7" },
+            { text: "(B) Use Keratometer (Measure curvature)", next: "Node_8" },
+            { text: "(C) Use Schirmer's Test (Check tear volume)", next: "Node_6C" }
+        ]
+    },
+    "Node_7": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "Clinical Thinking",
+        text: "⚠️ Anterior Segment Health Assessed. To simultaneously rule out keratoconus, which device should you choose?",
+        img: "Stage2.png",
+        options: [
+            { text: "(A) Keratometer", next: "Node_9" },
+            { text: "(B) Corneal Topographer", next: "Node_10" },
+            { text: "(C) Pachymeter (Corneal Thickness)", next: "Node_7C" }
+        ],
+        expChange: 10, item: "Slit Lamp", hpChange: 10
+    },
+    "Node_8": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "System Warning",
+        text: "❌ Ignored Infection Risk. Forcing lens wear exacerbates inflammation. Trust decreased!",
+        img: "Stage2.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_6" }],
+        hpChange: -20
+    },
+    "Node_6C": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "Advising Professor",
+        text: "❌ Missed the Big Picture. Schirmer's misses active corneal infections. Trust decreased!",
+        img: "Stage2.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_6" }],
+        hpChange: -10
+    },
+    "Node_9": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "Advising Professor",
+        text: "❌ Insufficient Information. Keratometer easily misses early keratoconus. Trust decreased!",
+        img: "Stage2.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_7" }],
+        hpChange: -15
+    },
+    "Node_7C": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "System Warning",
+        text: "❌ Diagnostic Gap. Pachymetry alone is insufficient for keratoconus screening. Trust decreased!",
+        img: "Stage2.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_7" }],
+        hpChange: -15
+    },
+    "Node_10": {
+        stage: "Stage 2: Contact Lens Fitting",
+        speaker: "System Prompt",
+        text: "✅ Stage 2 Cleared! The Topographer is essential for detecting keratoconus.",
+        img: "Stage2.png",
+        options: [{ text: "➡️ Enter Stage 3", next: "Node_11" }],
+        expChange: 50, item: "Corneal Topographer", hpChange: 10
+    },
+    "Node_11": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "40yo Engineer",
+        text: "My father has glaucoma, and I'd like a routine screening. Which instrument is the 'Gold Standard' for IOP?",
+        img: "Stage3.png",
+        options: [
+            { text: "(A) NCT (Non-Contact Tonometer)", next: "Node_12" },
+            { text: "(B) GAT (Goldmann Applanation Tonometer)", next: "Node_13" },
+            { text: "(C) iCare (Rebound Tonometer)", next: "Node_11C" }
+        ]
+    },
+    "Node_12": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "Advising Professor",
+        text: "❌ Gold Standard Required. NCT only provides an estimated value. Trust decreased!",
+        img: "Stage3.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_11" }],
+        hpChange: -10
+    },
+    "Node_11C": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "System Warning",
+        text: "❌ Not the Gold Standard. iCare is convenient but GAT remains the benchmark. Trust decreased!",
+        img: "Stage3.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_11" }],
+        hpChange: -10
+    },
+    "Node_13": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "Clinical Thinking",
+        text: "⚠️ High IOP Warning. To diagnose glaucoma nerve damage, what test should be done next?",
+        img: "Stage3.png",
+        options: [
+            { text: "(A) Measure peripheral vision loss (Visual Field)", next: "Node_14" },
+            { text: "(B) Use Phoropter to check binocular vision", next: "Node_15" },
+            { text: "(C) Ishihara Color Vision Test", next: "Node_13C" }
+        ],
+        expChange: 10, item: "GAT", hpChange: 10
+    },
+    "Node_14": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "System Prompt",
+        text: "✅ Stage 3 Cleared! A visual field analyzer confirms glaucoma nerve loss.",
+        img: "Stage3.png",
+        options: [{ text: "➡️ Enter Stage 4", next: "Node_16" }],
+        expChange: 50, item: "Visual Field Analyzer", hpChange: 10
+    },
+    "Node_15": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "System Warning",
+        text: "❌ Instrument Misuse. Phoropter cannot detect field defects. Trust decreased!",
+        img: "Stage3.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_13" }],
+        hpChange: -20
+    },
+    "Node_13C": {
+        stage: "Stage 3: Glaucoma Defense",
+        speaker: "System Warning",
+        text: "❌ Wrong Test. Color vision is not the primary diagnostic for glaucoma. Trust decreased!",
+        img: "Stage3.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_13" }],
+        hpChange: -15
+    },
+    "Node_16": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "65yo Patient",
+        text: "I have diabetes and feel my vision falling. How to get the 'widest' retinal view?",
+        img: "Stage4.png",
+        options: [
+            { text: "(A) Direct Ophthalmoscope", next: "Node_17" },
+            { text: "(B) Indirect Ophthalmoscope (BIO)", next: "Node_18" },
+            { text: "(C) Amsler Grid", next: "Node_16C" }
+        ]
+    },
+    "Node_17": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "System Warning",
+        text: "❌ Easy to Miss Lesions. Direct Ophthalmoscope field is too narrow. Trust decreased!",
+        img: "Stage4.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_16" }],
+        hpChange: -15
+    },
+    "Node_16C": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "System Warning",
+        text: "❌ Insufficient. Amsler grid only checks the central macula, missing peripheral retinopathy. Trust decreased!",
+        img: "Stage4.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_16" }],
+        hpChange: -15
+    },
+    "Node_18": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "Clinical Thinking",
+        text: "⚠️ Retinal Hemorrhage Found. To establish a permanent record for tracking, what is best?",
+        img: "Stage4.png",
+        options: [
+            { text: "(A) Fundus Camera", next: "Node_19" },
+            { text: "(B) Autorefractor", next: "Node_20" },
+            { text: "(C) Fundus sketch", next: "Node_18C" }
+        ],
+        hpChange: 10
+    },
+    "Node_19": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "Advising Professor",
+        text: "✅ Stage 4 Cleared! Fundus Camera images serve as permanent records.",
+        img: "Stage4.png",
+        options: [{ text: "➡️ Enter Final Stage", next: "Node_21" }],
+        expChange: 50, item: "Fundus Camera", hpChange: 10
+    },
+    "Node_20": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "System Warning",
+        text: "❌ Critical Error. Autorefractor cannot take retinal photos. Trust decreased!",
+        img: "Stage4.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_18" }],
+        hpChange: -20
+    },
+    "Node_18C": {
+        stage: "Stage 4: Diabetic Retinopathy",
+        speaker: "Advising Professor",
+        text: "❌ Outdated. Modern clinical practice requires objective imaging for accurate tracking. Trust decreased!",
+        img: "Stage4.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_18" }],
+        hpChange: -10
+    },
+    "Node_21": {
+        stage: "Final Stage: Advanced Imaging",
+        speaker: "70yo Retired Teacher",
+        text: "Straight lines look distorted. You need 'high-resolution retinal cross-sections'.",
+        img: "Stage5.png",
+        options: [
+            { text: "(A) Optical Coherence Tomography (OCT)", next: "Win" },
+            { text: "(B) Goldmann Perimeter", next: "Node_23" },
+            { text: "(C) Slit Lamp (No Fundus Lens)", next: "Node_21C" }
+        ]
+    },
+    "Node_23": {
+        stage: "Final Stage: Advanced Imaging",
+        speaker: "System Warning",
+        text: "❌ Diagnostic Error. Perimeter cannot see macular cross-sections. Trust damaged!",
+        img: "Stage5.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_21" }],
+        hpChange: -20
+    },
+    "Node_21C": {
+        stage: "Final Stage: Advanced Imaging",
+        speaker: "System Warning",
+        text: "❌ Completely Blind. You cannot see the macula with just a Slit Lamp. Trust decreased!",
+        img: "Stage5.png",
+        options: [{ text: "🔄 Re-evaluate", next: "Node_21" }],
+        hpChange: -20
+    }
+};
+
+let state = { hp: 50, exp: 0, inventory: ["Autorefractor", "Phoropter"] };
+
+function initGame() {
+    state.hp = 50; state.exp = 0;
+    state.inventory = ["Autorefractor", "Phoropter"];
+    document.getElementById("gameover-ov").style.display = "none";
+    document.getElementById("win-ov").style.display = "none";
+    document.getElementById("master-img").style.display = "none";
+    document.getElementById("win-title-main").innerText = "Clinical Assessment Complete!";
+    updateHUD(); updateInventory(); renderNode("Node_1");
+}
+
+function renderNode(nodeId) {
+    if (nodeId === "Win") { triggerWin(); return; }
+    const node = storyNodes[nodeId];
+    if (!node) return;
+    
+    if (node.hpChange) {
+        state.hp += node.hpChange;
+        state.hp = Math.min(100, Math.max(0, state.hp));
+        triggerFlash(node.hpChange > 0 ? "green" : "red");
+    }
+    if (node.expChange) state.exp += node.expChange;
+    if (node.item && !state.inventory.includes(node.item)) {
+        state.inventory.push(node.item);
+        updateInventory();
+    }
+    updateHUD();
+    if (state.hp <= 0) { document.getElementById("gameover-ov").style.display = "flex"; return; }
+    document.getElementById("stage-title").innerText = node.stage;
+    document.getElementById("speaker-tag").innerText = node.speaker;
+    document.getElementById("dialogue-text").innerText = node.text;
+    if (node.img) document.getElementById("scene-wrap").style.backgroundImage = `url('${node.img}')`;
+    const menuBox = document.getElementById("menu-box");
+    menuBox.innerHTML = "";
+    node.options.forEach(opt => {
+        const btn = document.createElement("div");
+        btn.className = "menu-item";
+        btn.innerText = opt.text;
+        btn.onclick = () => renderNode(opt.next);
+        menuBox.appendChild(btn);
+    });
+}
+
+function updateHUD() {
+    document.getElementById("conf-val").innerText = state.hp;
+    document.getElementById("conf-bar").style.width = state.hp + "%";
+    document.getElementById("exp-val").innerText = state.exp;
+    document.getElementById("exp-bar").style.width = Math.min(100, (state.exp % 100)) + "%";
+    document.getElementById("lv-val").innerText = 1 + Math.floor(state.exp / 100);
+}
+
+function updateInventory() {
+    const invBox = document.getElementById("inv-items");
+    invBox.innerHTML = "";
+    state.inventory.forEach(item => {
+        const span = document.createElement("span");
+        span.className = "inv-chip";
+        span.innerText = item;
+        invBox.appendChild(span);
+    });
+}
+
+function triggerFlash(color) {
+    const outer = document.getElementById("outer");
+    const cls = color === "red" ? "flash-red" : "flash-green";
+    outer.classList.remove(cls);
+    void outer.offsetWidth; 
+    outer.classList.add(cls);
+}
+
+function triggerWin() {
+    state.exp += 100;
+    state.hp = Math.min(100, state.hp + 10);
+    updateHUD();
+    
+    const finalLevel = 1 + Math.floor(state.exp / 100);
+    const winOv = document.getElementById("win-ov");
+    const masterImg = document.getElementById("master-img");
+    const winTitle = document.getElementById("win-title-main");
+
+    if (state.hp >= 90 && finalLevel >= 3) {
+        masterImg.style.display = "block";
+        winTitle.innerText = "Clinical Assessment Complete!\nMaster of Optometry!";
+    } else {
+        masterImg.style.display = "none";
+        winTitle.innerText = "Clinical Assessment Complete!";
+    }
+
+    winOv.style.display = "flex";
+    document.getElementById("win-stats").innerHTML = `Level: LV ${finalLevel}<br>Patient Confidence: ${state.hp}%<br>Total EXP: ${state.exp}`;
+}
+
+function restart() {
+    document.getElementById('start-screen').style.display = 'flex';
+    document.getElementById("gameover-ov").style.display = "none";
+    document.getElementById("win-ov").style.display = "none";
+}
+</script>
+</body>
+</html>
